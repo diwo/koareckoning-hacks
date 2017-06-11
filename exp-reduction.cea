@@ -1,0 +1,102 @@
+{
+  Cheat Engine auto assemble script for reducing experience gain
+  from all sources in "Kingdoms of Amalur: Reckoning".
+
+  You may change the line below beginning with "define"
+  to adjust the amount of exp reduction.
+
+  Possible values:
+    reduce_by_quarter        (25% reduction)
+    reduce_by_half           (50% reduction)
+    reduce_by_three_quarters (75% reduction)
+    reduce_to_zero           (nothing gives exp)
+}
+
+// Change this following line
+define(exp_reduce, reduce_by_three_quarters)
+
+
+//------------------------------------------------------------------//
+// Actual code below, don't touch unless you know what you're doing //
+//------------------------------------------------------------------//
+
+define(addfunc_inj,"Reckoning.exe"+731B5)
+define(addfunc_bytes,8B C3 C1 E8 11)
+
+define(doadd_inj,"Reckoning.exe"+7321B)
+define(doadd_bytes,03 48 04 C7 06 03 00 00 00)
+
+[ENABLE]
+
+assert(addfunc_inj,addfunc_bytes)
+assert(doadd_inj,doadd_bytes)
+alloc(newmem,1024)
+
+newmem:
+
+addfunc_new:
+  mov [mem_store_ebx],ebx
+  mov [mem_store_edx],edx
+addfunc_orig:
+  mov eax,ebx
+  shr eax,11
+  jmp addfunc_ret
+
+doadd_new:
+  cmp [mem_store_ebx],44020001
+  jne doadd_orig
+  cmp [mem_store_edx],00010000
+  jne doadd_orig
+  call exp_reduce
+  mov [edi+04],ecx
+doadd_orig:
+  add ecx,[eax+04]
+  mov [esi],00000003
+  jmp doadd_ret
+
+reduce_by_quarter:
+  push eax
+  mov eax,ecx
+  mov ecx,3
+  mul ecx
+  sar eax,2
+  mov ecx,eax
+  pop eax
+  ret
+reduce_by_half:
+  sar ecx,1
+  ret
+reduce_by_three_quarters:
+  sar ecx,2
+  ret
+reduce_to_zero:
+  mov ecx,0
+  ret
+
+mem_store_ebx:
+  db 00 00 00 00
+mem_store_edx:
+  db 00 00 00 00
+
+addfunc_inj:
+  jmp addfunc_new
+addfunc_ret:
+
+doadd_inj:
+  jmp doadd_new
+  nop
+  nop
+  nop
+  nop
+doadd_ret:
+
+[DISABLE]
+
+addfunc_inj:
+  db addfunc_bytes
+
+doadd_inj:
+  db doadd_bytes
+
+dealloc(newmem)
+
